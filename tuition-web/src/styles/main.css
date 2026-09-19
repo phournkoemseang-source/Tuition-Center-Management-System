@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /* Brand palette — indigo scale + supporting hues */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-canvas: #f4f5fa;
+  --color-canvas-dark: #0f172a;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --shadow-pop: 0 10px 30px -8px rgb(15 23 42 / 0.18), 0 4px 12px -4px rgb(15 23 42 / 0.08);
+}
+
+/* ---------- Base ---------- */
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-slate-800;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    @apply bg-brand-100 text-brand-900;
+  }
+
+  /* Slim scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-slate-300;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ---------- Component layer ---------- */
+
+@layer components {
+  /* --- Buttons --- */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold outline-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:pointer-events-none disabled:opacity-55;
+  }
+  .btn-sm {
+    @apply rounded-lg px-3 py-1.5 text-xs;
+  }
+  .btn-primary {
+    @apply bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800;
+  }
+  .btn-secondary {
+    @apply border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 active:bg-slate-100;
+  }
+  .btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white shadow-sm hover:bg-red-700;
+  }
+  .btn-success {
+    @apply bg-emerald-600 text-white shadow-sm hover:bg-emerald-700;
+  }
+
+  /* --- Form controls --- */
+  .label {
+    @apply mb-1.5 block text-[13px] font-medium text-slate-600;
+  }
+  .input {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 disabled:bg-slate-50;
+  }
+  .select {
+    @apply w-full cursor-pointer appearance-none rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 disabled:bg-slate-50 pr-10;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+  }
+
+  /* --- Surfaces --- */
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-card;
+  }
+  .card-pad {
+    @apply p-5 sm:p-6;
+  }
+  .card-header {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6;
+  }
+
+  /* --- Tables --- */
+  .table-wrap {
+    @apply overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-card;
+  }
+  .table {
+    @apply min-w-full divide-y divide-slate-200 text-sm;
+  }
+  .table thead {
+    @apply bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+  }
+  .table thead th {
+    @apply px-5 py-3.5 sm:px-6;
+  }
+  .table tbody {
+    @apply divide-y divide-slate-100;
+  }
+  .table tbody td {
+    @apply px-5 py-3.5 align-middle sm:px-6;
+  }
+  .table tbody tr {
+    @apply transition-colors hover:bg-brand-50/40;
+  }
+  .th-sortable {
+    @apply inline-flex cursor-pointer select-none items-center gap-1 hover:text-slate-700;
+  }
+
+  /* --- Badges --- */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize;
+  }
+  .badge-dot {
+    @apply h-1.5 w-1.5 rounded-full bg-current;
+  }
+
+  /* --- Misc --- */
+  .nav-item {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900;
+  }
+  .nav-item-active {
+    @apply bg-brand-600 text-white shadow-sm hover:bg-brand-600 hover:text-white;
+  }
+  .skeleton {
+    @apply animate-pulse rounded-xl bg-slate-200/70;
+  }
+  .kbd {
+    @apply rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-500;
+  }
+}
