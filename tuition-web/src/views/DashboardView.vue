@@ -3,15 +3,19 @@ import { computed, onMounted, ref } from 'vue'
 import StatCard from '../components/StatCard.vue'
 import BarList from '../components/charts/BarList.vue'
 import EmptyState from '../components/EmptyState.vue'
+import LastUpdated from '../components/LastUpdated.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { errorMessage } from '../services/api'
 import { dashboardService } from '../services/tcms'
 import type { DashboardStats } from '../types'
 import { formatLongDate, money } from '../utils/format'
+import { usePolling } from '../composables/usePolling'
+import { useLastUpdated } from '../composables/useLastUpdated'
 
 const stats = ref<DashboardStats | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const { lastUpdated, markUpdated } = useLastUpdated()
 
 const today = formatLongDate()
 
@@ -34,15 +38,25 @@ const unpaidBars = computed(() =>
   })),
 )
 
-onMounted(async () => {
+async function refresh(opts: { silent?: boolean } = {}) {
+  const silent = opts.silent ?? false
+  if (!silent) loading.value = true
   try {
     stats.value = await dashboardService.stats()
+    error.value = null
+    markUpdated()
   } catch (e) {
-    error.value = errorMessage(e)
+    // Silent background refreshes keep the last good numbers on screen
+    if (!silent) error.value = errorMessage(e)
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
-})
+}
+
+onMounted(() => refresh())
+
+// Live dashboard: re-fetch stats every 10s so the numbers update without reloading
+usePolling(() => refresh({ silent: true }), 10000)
 </script>
 
 <template>
@@ -50,7 +64,10 @@ onMounted(async () => {
     <div class="mb-6">
       <p class="text-[13px] font-medium text-brand-600">{{ greeting }} 👋</p>
       <h1 class="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Today at a glance</h1>
-      <p class="mt-0.5 text-sm text-slate-500">{{ today }}</p>
+      <p class="mt-0.5 flex items-center gap-2.5 text-sm text-slate-500">
+        {{ today }}
+        <LastUpdated :at="lastUpdated" />
+      </p>
     </div>
 
     <!-- Skeleton loading -->

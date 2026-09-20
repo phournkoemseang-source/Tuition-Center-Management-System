@@ -7,6 +7,7 @@ import type {
   DashboardStats,
   Payment,
   Student,
+  Teacher,
 } from '../types'
 
 export const authService = {
@@ -41,6 +42,27 @@ export const studentService = {
   },
   async remove(id: number): Promise<void> {
     await http.delete(`/students/${id}`)
+  },
+}
+
+export const teacherService = {
+  async list(): Promise<Teacher[]> {
+    const { data } = await http.get<{ data: Teacher[] }>('/teachers')
+    return data.data
+  },
+  async create(payload: { full_name: string; subject: string; email: string; password: string }): Promise<Teacher> {
+    const { data } = await http.post<{ data: Teacher }>('/teachers', payload)
+    return data.data
+  },
+  async update(
+    id: number,
+    payload: Partial<{ full_name: string; subject: string; email: string; password: string }>,
+  ): Promise<Teacher> {
+    const { data } = await http.put<{ data: Teacher }>(`/teachers/${id}`, payload)
+    return data.data
+  },
+  async remove(id: number): Promise<void> {
+    await http.delete(`/teachers/${id}`)
   },
 }
 

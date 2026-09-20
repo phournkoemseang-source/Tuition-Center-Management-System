@@ -42,6 +42,9 @@ export type IconName =
   | 'inbox'
   | 'eye'
   | 'eye-off'
+  | 'sparkles'
+  | 'check-square'
+  | 'square'
 
 const paths: Record<IconName, string[]> = {
   'layout-dashboard': [
@@ -155,6 +158,13 @@ const paths: Record<IconName, string[]> = {
     'M22 12h-6l-2 3h-4l-2-3H2',
     'M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
   ],
+  sparkles: [
+    'M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z',
+    'M20 3v4',
+    'M22 5h-4',
+  ],
+  'check-square': ['M9 11l3 3L22 4', 'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'],
+  square: ['M21 15V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5'],
 }
 
 const props = withDefaults(defineProps<{ name: IconName; size?: number }>(), {

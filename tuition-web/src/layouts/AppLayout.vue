@@ -12,6 +12,8 @@ const router = useRouter()
 const nav: { to: string; label: string; icon: IconName }[] = [
   { to: '/', label: 'Dashboard', icon: 'layout-dashboard' },
   { to: '/students', label: 'Students', icon: 'users' },
+  { to: '/teachers', label: 'Teachers', icon: 'graduation-cap' },
+  { to: '/assignments', label: 'Assignments', icon: 'user-check' },
   { to: '/classes', label: 'Classes', icon: 'book-open' },
   { to: '/attendance', label: 'Attendance', icon: 'check-circle' },
   { to: '/payments', label: 'Payments', icon: 'wallet' },

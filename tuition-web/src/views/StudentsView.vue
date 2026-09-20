@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import Avatar from '../components/Avatar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
@@ -10,6 +11,14 @@ import { errorMessage } from '../services/api'
 import { studentService } from '../services/tcms'
 import type { Student } from '../types'
 import { formatDate } from '../utils/format'
+import { downloadCsv, copyTsv } from '../utils/csv'
+import { bannerToast, toast } from '../utils/toast'
+import { usePolling } from '../composables/usePolling'
+import { useLastUpdated } from '../composables/useLastUpdated'
+import LastUpdated from '../components/LastUpdated.vue'
+import { celebrate } from '../utils/celebrate'
+
+const router = useRouter()
 
 type SortKey = 'full_name' | 'enrolled_date' | 'status'
 
@@ -36,14 +45,23 @@ const sortDir = ref<1 | -1>(1)
 const page = ref(1)
 const perPage = 10
 
+// Student just created in this session — always pinned to the very top
+const newStudentId = ref<number | null>(null)
+
 const sorted = computed(() => {
   const dir = sortDir.value
-  return [...students.value].sort((a, b) => {
+  const list = [...students.value].sort((a, b) => {
     const av = a[sortKey.value]
     const bv = b[sortKey.value]
     if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir
     return String(av ?? '').localeCompare(String(bv ?? '')) * dir
   })
+  // Pin the newly created student to the first row, above any sorting
+  if (newStudentId.value !== null) {
+    const idx = list.findIndex((s) => s.id === newStudentId.value)
+    if (idx > 0) list.unshift(...list.splice(idx, 1))
+  }
+  return list
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(sorted.value.length / perPage)))
@@ -64,18 +82,30 @@ function debouncedSearch() {
   searchTimer.value = setTimeout(load, 300)
 }
 
-async function load() {
-  loading.value = true
-  error.value = null
+async function load(opts: { silent?: boolean } = {}) {
+  const silent = opts.silent ?? false
+  if (!silent) loading.value = true
   try {
     students.value = await studentService.list(search.value)
-    page.value = 1
+    error.value = null
+    markUpdated()
+    if (!silent) page.value = 1
   } catch (e) {
-    error.value = errorMessage(e)
+    // Silent background refreshes keep the current list on screen on failure
+    if (!silent) error.value = errorMessage(e)
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
+
+// Auto-refresh every 15s, paused while a modal is open or a save is in flight
+usePolling(
+  () => load({ silent: true }),
+  15000,
+  () => showForm.value || confirming.value !== null || saving.value,
+)
+
+const { lastUpdated, markUpdated } = useLastUpdated()
 
 function openAdd() {
   editing.value = null
@@ -96,12 +126,26 @@ async function save() {
   actionError.value = null
   try {
     if (editing.value) {
-      await studentService.update(editing.value.id, form.value)
+      const updated = await studentService.update(editing.value.id, form.value)
+      // Update in place — no reload flicker
+      const idx = students.value.findIndex((s) => s.id === updated.id)
+      if (idx !== -1) students.value[idx] = { ...students.value[idx], ...updated }
+      toast('Student updated')
     } else {
-      await studentService.create(form.value)
+      const created = await studentService.create(form.value)
+      // Show the new student immediately at the top — no reload needed
+      students.value = [created, ...students.value]
+      newStudentId.value = created.id
+      page.value = 1
+      celebrate()
+      bannerToast({
+        message: `New student added: ${created.full_name}`,
+        kind: 'success',
+        actionLabel: 'Enroll in class',
+        onAction: () => router.push('/classes'),
+      })
     }
     showForm.value = false
-    await load()
   } catch (e) {
     actionError.value = errorMessage(e)
   } finally {
@@ -120,8 +164,11 @@ async function doToggle() {
   confirmBusy.value = true
   try {
     await studentService.update(s.id, { status: next })
+    // Update in place — no reload flicker
+    const idx = students.value.findIndex((x) => x.id === s.id)
+    if (idx !== -1) students.value[idx] = { ...students.value[idx], status: next }
+    toast(next === 'active' ? `${s.full_name} reactivated` : `${s.full_name} deactivated`, next === 'active' ? 'success' : 'info')
     confirming.value = null
-    await load()
   } catch (e) {
     error.value = errorMessage(e)
     confirming.value = null
@@ -130,12 +177,76 @@ async function doToggle() {
   }
 }
 
-onMounted(load)
+// Export — quick CSV for Excel / TSV copy for Google Sheets
+const exportOpen = ref(false)
+const exportPicker = ref<HTMLElement | null>(null)
+
+function onDocClick(e: MouseEvent) {
+  if (!exportOpen.value) return
+  if (exportPicker.value && !exportPicker.value.contains(e.target as Node)) exportOpen.value = false
+}
+
+function exportHeader(): string[] {
+  return ['Name', 'Phone', 'Parent contact', 'Enrolled', 'Status']
+}
+
+function exportRow(s: Student): string[] {
+  return [s.full_name, s.phone ?? '', s.parent_contact ?? '', s.enrolled_date, s.status]
+}
+
+function exportCsv() {
+  exportOpen.value = false
+  const rows = [exportHeader(), ...sorted.value.map(exportRow)]
+  downloadCsv(rows, `students-${new Date().toISOString().slice(0, 10)}.csv`)
+  toast(`Exported ${sorted.value.length} students to CSV`)
+}
+
+async function copyList() {
+  exportOpen.value = false
+  const rows = [exportHeader(), ...sorted.value.map(exportRow)]
+  if (await copyTsv(rows)) {
+    toast(`Copied ${sorted.value.length} students — paste straight into Sheets/Excel`)
+  } else {
+    toast('Could not access the clipboard', 'error')
+  }
+}
+
+onMounted(() => {
+  load()
+  document.addEventListener('click', onDocClick)
+})
+onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 </script>
 
 <template>
   <div>
     <PageHeader title="Students" :subtitle="`${students.length} enrolled in total`">
+      <div ref="exportPicker" class="relative">
+        <button class="btn btn-secondary" @click="exportOpen = !exportOpen">
+          <AppIcon name="download" :size="15" />
+          Export
+          <AppIcon name="chevron-down" :size="13" />
+        </button>
+        <div
+          v-if="exportOpen"
+          class="absolute right-0 z-20 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-pop"
+        >
+          <button
+            class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            @click="exportCsv"
+          >
+            <AppIcon name="download" :size="14" class="text-slate-400" />
+            Excel (CSV)
+          </button>
+          <button
+            class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            @click="copyList"
+          >
+            <AppIcon name="clipboard-list" :size="14" class="text-slate-400" />
+            Copy for Sheets
+          </button>
+        </div>
+      </div>
       <button class="btn btn-primary" @click="openAdd">
         <AppIcon name="plus" :size="16" />
         Add student
@@ -154,6 +265,7 @@ onMounted(load)
           @input="debouncedSearch"
         />
       </div>
+      <LastUpdated :at="lastUpdated" class="ml-auto" />
     </div>
 
     <!-- Loading skeleton -->
@@ -203,12 +315,26 @@ onMounted(load)
               </EmptyState>
             </td>
           </tr>
-          <tr v-for="s in paged" :key="s.id">
+          <tr
+            v-for="s in paged"
+            :key="s.id"
+            class="transition-colors"
+            :class="s.id === newStudentId ? 'bg-brand-50/70' : ''"
+          >
             <td>
               <div class="flex items-center gap-3">
                 <Avatar :name="s.full_name" size="md" />
                 <div class="min-w-0">
-                  <p class="truncate font-semibold text-slate-800">{{ s.full_name }}</p>
+                  <div class="flex items-center gap-2">
+                    <p class="truncate font-semibold text-slate-800">{{ s.full_name }}</p>
+                    <span
+                      v-if="s.id === newStudentId"
+                      class="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                    >
+                      <AppIcon name="sparkles" :size="10" />
+                      New
+                    </span>
+                  </div>
                   <p class="text-xs text-slate-400 sm:hidden">{{ s.phone ?? 'no phone' }}</p>
                 </div>
               </div>

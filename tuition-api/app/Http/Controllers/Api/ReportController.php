@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -95,6 +96,72 @@ class ReportController extends Controller
             ->get();
 
         return response()->json(['data' => $rows]);
+    }
+
+    /**
+     * Attendance summary for one month: totals, per class and per student.
+     * GET /api/reports/attendance?year=2026&month=9
+     */
+    public function attendanceMonthly(Request $request): JsonResponse
+    {
+        [$year, $month] = $this->period($request);
+
+        $base = Attendance::query()
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month);
+
+        $present = (clone $base)->where('status', 'present')->count();
+        $late = (clone $base)->where('status', 'late')->count();
+        $absent = (clone $base)->where('status', 'absent')->count();
+        $sessions = (int) (clone $base)
+            ->selectRaw('count(distinct (class_room_id, date)) as sessions')
+            ->value('sessions');
+
+        $marked = $present + $late + $absent;
+
+        return response()->json(['data' => [
+            'period' => ['year' => $year, 'month' => $month],
+            'totals' => [
+                'present' => $present,
+                'late' => $late,
+                'absent' => $absent,
+                'sessions' => $sessions,
+                'rate' => $marked > 0 ? (int) round((($present + $late) / $marked) * 100) : null,
+            ],
+            'per_class' => (clone $base)
+                ->join('class_rooms', 'class_rooms.id', '=', 'attendance.class_room_id')
+                ->groupBy('class_rooms.id', 'class_rooms.name')
+                ->orderBy('class_rooms.name')
+                ->selectRaw("
+                    class_rooms.id,
+                    class_rooms.name,
+                    sum((attendance.status = 'present')::int) as present,
+                    sum((attendance.status = 'late')::int) as late,
+                    sum((attendance.status = 'absent')::int) as absent,
+                    count(distinct (attendance.class_room_id, attendance.date)) as sessions
+                ")
+                ->get(),
+            'per_student' => (clone $base)
+                ->join('students', 'students.id', '=', 'attendance.student_id')
+                ->join('class_rooms', 'class_rooms.id', '=', 'attendance.class_room_id')
+                ->groupBy('students.id', 'students.full_name', 'class_rooms.name')
+                ->orderBy('students.full_name')
+                ->selectRaw("
+                    students.id,
+                    students.full_name as student,
+                    class_rooms.name as class,
+                    sum((attendance.status = 'present')::int) as present,
+                    sum((attendance.status = 'late')::int) as late,
+                    sum((attendance.status = 'absent')::int) as absent
+                ")
+                ->get()
+                ->map(function ($row) {
+                    $marked = $row->present + $row->late + $row->absent;
+                    $row->rate = $marked > 0 ? (int) round((($row->present + $row->late) / $marked) * 100) : null;
+
+                    return $row;
+                }),
+        ]]);
     }
 
     /**

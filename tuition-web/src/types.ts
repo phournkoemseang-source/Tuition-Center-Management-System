@@ -16,11 +16,22 @@ export interface Student {
   payments?: Payment[]
 }
 
+export interface TeacherClass {
+  id: number
+  name: string
+  schedule: string
+  fee_amount: string
+  active_students_count: number
+}
+
 export interface Teacher {
   id: number
   full_name: string
   subject: string
   user_id: number
+  classes_count?: number
+  classes?: TeacherClass[]
+  user?: { id: number; name: string; email: string; role: string } | null
 }
 
 export interface ClassRoom {

@@ -35,6 +35,21 @@ export interface ReportRow {
   method: string
 }
 
+export interface AttendanceMonthlyReport {
+  period: { year: number; month: number }
+  totals: { present: number; late: number; absent: number; sessions: number; rate: number | null }
+  per_class: { id: number; name: string; present: number; late: number; absent: number; sessions: number }[]
+  per_student: {
+    id: number
+    student: string
+    class: string
+    present: number
+    late: number
+    absent: number
+    rate: number | null
+  }[]
+}
+
 export const reportService = {
   async monthly(year: number, month: number): Promise<MonthlyReport> {
     const { data } = await http.get<{ data: MonthlyReport }>('/reports/monthly', { params: { year, month } })
@@ -43,6 +58,13 @@ export const reportService = {
 
   async monthlyStudents(year: number, month: number): Promise<ReportRow[]> {
     const { data } = await http.get<{ data: ReportRow[] }>('/reports/monthly/students', { params: { year, month } })
+    return data.data
+  },
+
+  async attendanceMonthly(year: number, month: number): Promise<AttendanceMonthlyReport> {
+    const { data } = await http.get<{ data: AttendanceMonthlyReport }>('/reports/attendance', {
+      params: { year, month },
+    })
     return data.data
   },
 

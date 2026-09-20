@@ -16,6 +16,8 @@ const router = createRouter({
       children: [
         { path: '', name: 'dashboard', component: () => import('../views/DashboardView.vue'), meta: { title: 'Dashboard' } },
         { path: 'students', name: 'students', component: () => import('../views/StudentsView.vue'), meta: { title: 'Students' } },
+        { path: 'teachers', name: 'teachers', component: () => import('../views/TeachersView.vue'), meta: { title: 'Teachers' } },
+        { path: 'assignments', name: 'assignments', component: () => import('../views/AssignmentsView.vue'), meta: { title: 'Assignments' } },
         { path: 'classes', name: 'classes', component: () => import('../views/ClassesView.vue'), meta: { title: 'Classes' } },
         { path: 'attendance', name: 'attendance', component: () => import('../views/AttendanceView.vue'), meta: { title: 'Attendance' } },
         { path: 'payments', name: 'payments', component: () => import('../views/PaymentsView.vue'), meta: { title: 'Payments' } },

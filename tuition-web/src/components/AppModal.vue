@@ -8,6 +8,8 @@ const props = defineProps<{
   description?: string
   /** Shows Cancel / Confirm with a danger-styled confirm button. */
   confirm?: { label: string; tone?: 'primary' | 'danger' | 'success'; loading?: boolean }
+  /** Wide panel for data-heavy content like tables. */
+  wide?: boolean
 }>()
 
 const emit = defineEmits<{ close: []; confirm: [] }>()
@@ -50,7 +52,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
           >
             <div
               class="w-full rounded-2xl bg-white shadow-pop"
-              :class="confirm ? 'max-w-md' : 'max-w-lg'"
+              :class="confirm ? 'max-w-md' : wide ? 'max-w-3xl' : 'max-w-lg'"
               role="dialog"
               aria-modal="true"
             >
